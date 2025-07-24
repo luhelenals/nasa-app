@@ -116,8 +116,13 @@ def getIndicators(request):
     if total_asteroids == 0:
         return Response({
             "message": "Nenhum asteroide encontrado na base de dados para gerar indicadores.",
-            "total_asteroids": 0
+            "total_asteroids": 0,
+            "unique_asteroids_by_name": 0,
+            "unique_potentially_hazardous_asteroids": 0 # Adicionado para caso vazio
         }, status=status.HTTP_200_OK)
+
+    # 1.1 Quantidade de asteroides únicos pelo nome
+    unique_asteroids_by_name = asteroids.values('name').distinct().count()
 
     # 2. Média da velocidade dos asteroides
     avg_velocity = asteroids.aggregate(Avg('relative_velocity_km_per_second'))['relative_velocity_km_per_second__avg']
@@ -168,10 +173,14 @@ def getIndicators(request):
     num_unique_dates = asteroids.values('imported_date').distinct().count()
     avg_asteroids_per_day = total_asteroids / num_unique_dates if num_unique_dates > 0 else 0
 
+    # 10. Quantidade de asteroides únicos (pelo nome) que são potencialmente perigosos
+    unique_potentially_hazardous_asteroids = asteroids.filter(is_potentially_hazardous_asteroid=True).values('name').distinct().count()
 
     response_data = {
         "total_asteroids": total_asteroids,
-        "avg_asteroids_per_day": round(avg_asteroids_per_day, 2), # Arredondar para 2 casas decimais
+        "unique_asteroids_by_name": unique_asteroids_by_name,
+        "unique_potentially_hazardous_asteroids": unique_potentially_hazardous_asteroids,
+        "avg_asteroids_per_day": round(avg_asteroids_per_day, 2),
         "avg_velocity_km_per_second": round(avg_velocity, 2) if avg_velocity else None,
         "max_velocity": max_velocity_data,
         "min_velocity": min_velocity_data,
