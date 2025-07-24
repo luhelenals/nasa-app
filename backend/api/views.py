@@ -2,7 +2,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 import requests, os
-from datetime import date
+from datetime import date, datetime
 from base.models import *
 from .serializers import *
 from django.db.models import Avg, Max, Min, Count
