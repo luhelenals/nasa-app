@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-import requests
+import requests, os
 from datetime import datetime, date
 from base.models import *
 from .serializers import *
@@ -14,10 +14,25 @@ def getData(request):
 
 @api_view(['POST'])
 def importData(request):
-    current_date_str = '2025-07-22'#date.today().strftime('%Y-%m-%d') # Data de hoje no formato YYYY-MM-DD
-    nasa_api_key = "S1MbedUQFIHVIGszDWCzIR56llxgt1kckdJeXlPX" # Sua chave da API da NASA
-    # A URL da API da NASA ainda usa a data de hoje para buscar os dados
-    nasa_api_url = f"https://api.nasa.gov/neo/rest/v1/feed?start_date={current_date_str}&end_date={current_date_str}&api_key={nasa_api_key}"
+    import_date_str = request.data.get('import_date')
+
+    if import_date_str:
+        try:
+            # Converter a string da data para um objeto date
+            target_date = date.fromisoformat(import_date_str)
+            current_date_str = import_date_str # Usar a data fornecida para a URL da NASA
+        except ValueError:
+            return Response(
+                {"error": "Formato de data inválido. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    else:
+        # Se a data não foi fornecida, usar a data de hoje
+        target_date = date.today()
+        current_date_str = target_date.strftime('%Y-%m-%d')
+
+    nasa_api_key = os.environ.get('NASA_API_KEY')
+    nasa_api_url = f"https://api.nasa.gov/neo/rest/v1/feed?start_date={target_date}&end_date={target_date}&api_key={nasa_api_key}"
 
     try:
         response = requests.get(nasa_api_url)
@@ -26,7 +41,6 @@ def importData(request):
     except requests.exceptions.RequestException as e:
         return Response({"error": f"Erro ao conectar ou receber dados da API da NASA: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # O JSON de retorno da NASA usa a data como chave, então usamos current_date_str aqui
     near_earth_objects_for_today = data.get('near_earth_objects', {}).get(current_date_str, [])
 
     imported_asteroids_count = 0
@@ -69,9 +83,7 @@ def importData(request):
                 'absolute_magnitude_h': absolute_magnitude_h,
                 'is_potentially_hazardous_asteroid': is_potentially_hazardous_asteroid,
                 'is_sentry_object': is_sentry_object,
-                # Não precisamos mais passar 'imported_date' aqui, pois o 'default=date.today' no modelo cuidará disso
-                # Ou, se preferir passar explicitamente (não necessário com default=date.today no modelo):
-                'imported_date': datetime.strptime(current_date_str, "%Y-%m-%d").date()
+                'imported_date': target_date
             }
 
             serializer = AsteroidSerializer(data=asteroid_data)
