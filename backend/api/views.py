@@ -2,9 +2,10 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
 import requests, os
-from datetime import datetime, date
+from datetime import date
 from base.models import *
 from .serializers import *
+from django.db.models import Avg, Max, Min, Count
 
 @api_view(['GET'])
 def getData(request):
@@ -104,3 +105,80 @@ def importData(request):
         {"message": f"{imported_asteroids_count} asteroides importados com sucesso!"},
         status=status.HTTP_201_CREATED
     )
+
+@api_view(['GET'])
+def getIndicators(request):
+    asteroids = Asteroid.objects.all()
+
+    # 1. Quantidade total de asteroides na base
+    total_asteroids = asteroids.count()
+
+    if total_asteroids == 0:
+        return Response({
+            "message": "Nenhum asteroide encontrado na base de dados para gerar indicadores.",
+            "total_asteroids": 0
+        }, status=status.HTTP_200_OK)
+
+    # 2. Média da velocidade dos asteroides
+    avg_velocity = asteroids.aggregate(Avg('relative_velocity_km_per_second'))['relative_velocity_km_per_second__avg']
+
+    # 3. Maior velocidade de asteroide e nome dele
+    max_velocity_obj = asteroids.order_by('-relative_velocity_km_per_second').first()
+    max_velocity_data = {
+        'velocity_km_s': max_velocity_obj.relative_velocity_km_per_second,
+        'name': max_velocity_obj.name
+    } if max_velocity_obj else None
+
+    # 4. Menor velocidade de asteroide e nome dele
+    min_velocity_obj = asteroids.order_by('relative_velocity_km_per_second').first()
+    min_velocity_data = {
+        'velocity_km_s': min_velocity_obj.relative_velocity_km_per_second,
+        'name': min_velocity_obj.name
+    } if min_velocity_obj else None
+
+    # 5. Média do diâmetro dos asteroides (usando a média entre min e max)
+    avg_min_diameter = asteroids.aggregate(Avg('estimated_diameter_min_meters'))['estimated_diameter_min_meters__avg']
+    avg_max_diameter = asteroids.aggregate(Avg('estimated_diameter_max_meters'))['estimated_diameter_max_meters__avg']
+    avg_diameter = (avg_min_diameter + avg_max_diameter) / 2 if avg_min_diameter is not None and avg_max_diameter is not None else None
+
+    # 6. Maior diâmetro e nome do asteroide com maior diâmetro
+    max_estimated_diameter_obj = asteroids.order_by('-estimated_diameter_max_meters').first()
+    max_diameter_data = {
+        'diameter_meters': max_estimated_diameter_obj.estimated_diameter_max_meters,
+        'name': max_estimated_diameter_obj.name
+    } if max_estimated_diameter_obj else None
+
+    # 7. Menor diâmetro e nome do asteroide com menor diâmetro
+    min_estimated_diameter_obj = asteroids.order_by('estimated_diameter_min_meters').first()
+    min_diameter_data = {
+        'diameter_meters': min_estimated_diameter_obj.estimated_diameter_min_meters,
+        'name': min_estimated_diameter_obj.name
+    } if min_estimated_diameter_obj else None
+
+    # 8. Quantidade de asteroides por dia registrado na base
+    asteroids_by_date = asteroids.values('imported_date').annotate(count=Count('id')).order_by('imported_date')
+    
+    # Formatar para um dicionário legível
+    asteroids_by_date_formatted = {
+        item['imported_date'].strftime('%Y-%m-%d'): item['count']
+        for item in asteroids_by_date
+    }
+
+    # 9. Média de quantidade de asteroides por dia
+    num_unique_dates = asteroids.values('imported_date').distinct().count()
+    avg_asteroids_per_day = total_asteroids / num_unique_dates if num_unique_dates > 0 else 0
+
+
+    response_data = {
+        "total_asteroids": total_asteroids,
+        "avg_asteroids_per_day": round(avg_asteroids_per_day, 2), # Arredondar para 2 casas decimais
+        "avg_velocity_km_per_second": round(avg_velocity, 2) if avg_velocity else None,
+        "max_velocity": max_velocity_data,
+        "min_velocity": min_velocity_data,
+        "avg_diameter_meters": round(avg_diameter, 2) if avg_diameter else None,
+        "max_estimated_diameter": max_diameter_data,
+        "min_estimated_diameter": min_diameter_data,
+        "asteroids_by_date": asteroids_by_date_formatted,
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
