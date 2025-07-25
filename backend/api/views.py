@@ -1,13 +1,14 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from rest_framework import status
+from rest_framework import status, generics
 import requests, os
 from datetime import date, datetime
 from base.models import *
 from .serializers import *
 from django.db.models import Avg, Max, Min, Count
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.contrib.auth import get_user_model
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -196,3 +197,11 @@ def getIndicators(request):
     }
 
     return Response(response_data, status=status.HTTP_200_OK)
+
+User = get_user_model()
+
+# ENDPOINT DE CADASTRO DE USUÁRIO
+class UserRegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserRegisterSerializer
+    permission_classes = [AllowAny]
