@@ -6,14 +6,18 @@ from datetime import date, datetime
 from base.models import *
 from .serializers import *
 from django.db.models import Avg, Max, Min, Count
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def getData(request):
     items = Asteroid.objects.all()
     serializer = AsteroidSerializer(items, many=True)
     return Response(serializer.data)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def importData(request):
     import_date_str = request.data.get('import_date')
 
@@ -107,6 +111,7 @@ def importData(request):
     )
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def getIndicators(request):
     asteroids = Asteroid.objects.all()
 
