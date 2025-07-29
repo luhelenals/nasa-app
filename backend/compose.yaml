@@ -1,0 +1,41 @@
+# compose.yaml (dentro de NASA-APP/backend/)
+
+version: '3.8'
+
+services:
+  app: # Renomeei para 'app' para ser mais genérico e claro
+    build:
+      context: . # O contexto é o diretório 'backend'
+      dockerfile: Dockerfile # Procura por Dockerfile em 'backend/'
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env # Aponta para NASA-APP/.env (um nível acima de 'backend/')
+    # Se você for rodar o servidor de desenvolvimento do Django
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app # Monta o diretório 'backend' dentro do contêiner em /app
+    # Dependências de outros serviços, como o banco de dados
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17 # Use uma versão específica
+    restart: always
+    environment:
+      POSTGRES_DB: nasa_db # O nome do seu banco de dados
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123 # Use segredos em produção!
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports: # Exponha a porta para acessar o DB de fora (opcional, mas útil para debug)
+      - "5432:5432"
+    healthcheck: # Certifique-se de ter um healthcheck configurado para o db
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d nasa_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata: # Define o volume para persistência do banco de dados
