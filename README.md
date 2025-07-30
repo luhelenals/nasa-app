@@ -31,25 +31,6 @@ Este projeto implementa uma API RESTful usando Django e Django REST Framework pa
 * **Requisições HTTP:** [Requests](https://docs.python-requests.org/en/latest/)
 ---
 
-## Estrutura do Projeto
-
-NASA-APP/
-├── backend/                 
-│   ├── api/                  # Aplicação Django de API
-│   ├── backend/              # Configurações do projeto Django
-│   ├── .dockerignore         
-│   ├── compose.yaml          # Configuração do Docker Compose
-│   ├── Dockerfile            # Dockerfile para o backend
-│   ├── manage.py             # Utilitário de linha de comando do Django
-│   └── requirements.txt      # Dependências Python
-└── frontend/                 
-    ├── public/               
-    ├── src/                  # Código fonte da aplicação React
-    │   └── App.js            # Componente principal da aplicação
-    ├── node_modules/         # Dependências do Node.js
-    ├── package.json          # Metadados
-    └── .env                  # Variáveis de ambiente
-
 ## ⚙️ Configuração e Execução
 
 ### Pré-requisitos
