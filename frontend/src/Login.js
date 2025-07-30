@@ -8,9 +8,9 @@ function Login({ setMessage, setLoading, setTokens, setAccessToken, setCurrentPa
 
   // Função para lidar com o envio do formulário de login
   const handleLogin = async (e) => {
-    e.preventDefault(); // Previne o comportamento padrão de recarregar a página
-    clearFormStates(); // Limpa mensagens e tokens ao iniciar nova tentativa
-    setLoading(true); // Ativa o estado de carregamento
+    e.preventDefault();
+    clearFormStates();
+    setLoading(true);
 
     try {
       // Fazendo a requisição POST para o endpoint de login
@@ -19,12 +19,11 @@ function Login({ setMessage, setLoading, setTokens, setAccessToken, setCurrentPa
         password: loginPassword
       });
 
-      // Se a requisição for bem-sucedida, armazena os tokens e exibe mensagem
-      setTokens(response.data); // Guarda ambos os tokens
-      setAccessToken(response.data.access); // Guarda o access token separadamente
-      console.log('Tokens recebidos:', response.data);
+      setTokens(response.data);
+      setAccessToken(response.data.access);
+      //console.log('Tokens recebidos:', response.data);
 
-      // Redireciona para a página principal (dashboard) após um pequeno atraso
+      // Redireciona para a página dashboard
       setTimeout(() => {
         setCurrentPage('dashboard');
         setLoginUsername(''); // Limpa campos após login bem-sucedido
@@ -33,14 +32,13 @@ function Login({ setMessage, setLoading, setTokens, setAccessToken, setCurrentPa
 
     } catch (error) {
       console.error("Erro no login:", error);
-      // Verifica se o erro é uma resposta do servidor com status 400 (Bad Request)
       if (error.response && error.response.status === 400) {
         setMessage('Nome de usuário ou senha incorretos.');
       } else {
         setMessage('Ocorreu um erro ao tentar fazer login. Tente novamente mais tarde.');
       }
     } finally {
-      setLoading(false); // Desativa o estado de carregamento
+      setLoading(false);
     }
   };
 

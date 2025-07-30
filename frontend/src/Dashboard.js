@@ -79,6 +79,10 @@ function Dashboard({ accessToken, setCurrentPage, clearFormStates }) {
     }
   };
 
+  const goToAsteroidsPage = async () => {
+    setCurrentPage('asteroids');
+  }
+
   useEffect(() => {
     fetchIndicadores();
   }, [accessToken]);
@@ -182,6 +186,9 @@ function Dashboard({ accessToken, setCurrentPage, clearFormStates }) {
         </button>
         <button onClick={handleAddDateClick} className="dashboard-button-update">
           Adicionar Data
+        </button>
+        <button onClick={goToAsteroidsPage} className="dashboard-button-load-all">
+          Ver Todos os Asteroides
         </button>
       </div>
 
