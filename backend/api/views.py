@@ -1,3 +1,4 @@
+# views.py
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status, generics
@@ -10,18 +11,59 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+import logging
 
+# Importações para DRF Spectacular
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
+
+logger = logging.getLogger(__name__)
+
+class ImportDataSerializer(serializers.Serializer):
+    import_date = serializers.DateField(
+        required=False,
+        help_text="Data para importar os asteroides no formato YYYY-MM-DD. Se não for fornecida, a data atual será usada.",
+        allow_null=True
+    )
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name='imported_date',
+            type=OpenApiTypes.DATE,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description='Filtra os asteroides pela data de importação (formato YYYY-MM-DD).',
+            examples=[
+                OpenApiExample(
+                    'Filtrar por data específica',
+                    value='2025-07-29',
+                    parameter_only=True
+                ),
+                OpenApiExample(
+                    'Sem filtro de data (retorna todos)',
+                    value='',
+                    parameter_only=True
+                )
+            ]
+        ),
+    ],
+    summary="Lista todos os asteroides",
+    description="Retorna uma lista de todos os asteroides cadastrados, com opção de filtrar por data de importação."
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getData(request):
-    # Obtém todos os asteroides
+    """
+    Retorna uma lista de todos os asteroides cadastrados na base de dados.
+    Permite filtrar por data de importação via parâmetro 'imported_date'.
+    """
     items = Asteroid.objects.all()
-
     imported_date_str = request.GET.get('imported_date')
     if imported_date_str:
         try:
             filter_date = date.fromisoformat(imported_date_str)
-            # Filtra os asteroides pela data de importação
             items = items.filter(imported_date=filter_date)
         except ValueError:
             return Response(
@@ -33,10 +75,28 @@ def getData(request):
                 {"error": "Erro interno do servidor ao aplicar filtro de data."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
     serializer = AsteroidSerializer(items, many=True)
     return Response(serializer.data)
 
+@extend_schema(
+    summary="Obtém informações de um asteroide",
+    description="Retorna os detalhes de um asteroide específico usando seu ID.",
+    parameters=[
+        OpenApiParameter(
+            name='id',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+            description='ID único do asteroide.',
+            examples=[
+                OpenApiExample(
+                    'Exemplo de ID',
+                    value=1,
+                    parameter_only=True
+                )
+            ]
+        ),
+    ]
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getAsteroidInfo(request, id):
@@ -49,6 +109,23 @@ def getAsteroidInfo(request, id):
     except Exception as e:
         return Response({"detail": "Erro interno do servidor."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@extend_schema(
+    request=ImportDataSerializer,
+    summary="Importa dados de asteroides da API da NASA",
+    description="Importa dados de asteroides para uma data específica ou para a data atual, se nenhuma for fornecida.",
+    examples=[
+        OpenApiExample(
+            'Importar dados para uma data específica',
+            value={'import_date': '2025-07-29'},
+            request_only=True
+        ),
+        OpenApiExample(
+            'Importar dados para a data atual (sem especificar data)',
+            value={},
+            request_only=True
+        ),
+    ]
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def importData(request):
@@ -56,16 +133,14 @@ def importData(request):
 
     if import_date_str:
         try:
-            # Converter a string da data para um objeto date
             target_date = date.fromisoformat(import_date_str)
-            current_date_str = import_date_str # Usar a data fornecida para a URL da NASA
+            current_date_str = import_date_str
         except ValueError:
             return Response(
                 {"error": "Formato de data inválido. Use YYYY-MM-DD."},
                 status=status.HTTP_400_BAD_REQUEST
             )
     else:
-        # Se a data não foi fornecida, usar a data de hoje
         target_date = date.today()
         current_date_str = target_date.strftime('%Y-%m-%d')
 
@@ -74,7 +149,7 @@ def importData(request):
 
     try:
         response = requests.get(nasa_api_url)
-        response.raise_for_status() # Levanta HTTPError para 4xx/5xx responses
+        response.raise_for_status()
         data = response.json()
     except requests.exceptions.RequestException as e:
         return Response({"error": f"Erro ao conectar ou receber dados da API da NASA: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -85,18 +160,15 @@ def importData(request):
     errors = []
 
     for neo in near_earth_objects_for_today:
-        # Extrair os dados necessários
         name = neo.get('name')
         absolute_magnitude_h = neo.get('absolute_magnitude_h')
         is_potentially_hazardous_asteroid = neo.get('is_potentially_hazardous_asteroid')
         is_sentry_object = neo.get('is_sentry_object')
 
-        # Diâmetro estimado em metros
         estimated_diameter_data = neo.get('estimated_diameter', {}).get('meters', {})
         estimated_diameter_min_meters = estimated_diameter_data.get('estimated_diameter_min')
         estimated_diameter_max_meters = estimated_diameter_data.get('estimated_diameter_max')
 
-        # Dados de aproximação para a velocidade relativa
         close_approach_data = neo.get('close_approach_data', [])
         relative_velocity_km_per_second = None
 
@@ -106,12 +178,10 @@ def importData(request):
             if velocity_str:
                 relative_velocity_km_per_second = float(velocity_str)
 
-        # Validar se todos os campos obrigatórios foram encontrados
         if all([name, estimated_diameter_min_meters is not None, estimated_diameter_max_meters is not None,
-                relative_velocity_km_per_second is not None, absolute_magnitude_h is not None,
-                is_potentially_hazardous_asteroid is not None, is_sentry_object is not None]):
+                        relative_velocity_km_per_second is not None, absolute_magnitude_h is not None,
+                        is_potentially_hazardous_asteroid is not None, is_sentry_object is not None]):
             
-            # Criar o dicionário de dados para o serializer
             asteroid_data = {
                 'name': name,
                 'estimated_diameter_min_meters': estimated_diameter_min_meters,
@@ -135,7 +205,7 @@ def importData(request):
     if errors:
         return Response(
             {"message": f"{imported_asteroids_count} asteroides importados com sucesso, mas ocorreram erros para alguns:", "errors": errors},
-            status=status.HTTP_207_MULTI_STATUS # Partial content
+            status=status.HTTP_207_MULTI_STATUS
         )
     return Response(
         {"message": f"{imported_asteroids_count} asteroides importados com sucesso!"},
@@ -147,7 +217,6 @@ def importData(request):
 def getIndicators(request):
     asteroids = Asteroid.objects.all()
 
-    # 1. Quantidade total de asteroides na base
     total_asteroids = asteroids.count()
 
     if total_asteroids == 0:
@@ -155,62 +224,43 @@ def getIndicators(request):
             "message": "Nenhum asteroide encontrado na base de dados para gerar indicadores.",
             "total_asteroids": 0,
             "unique_asteroids_by_name": 0,
-            "unique_potentially_hazardous_asteroids": 0 # Adicionado para caso vazio
+            "unique_potentially_hazardous_asteroids": 0
         }, status=status.HTTP_200_OK)
 
-    # 1.1 Quantidade de asteroides únicos pelo nome
     unique_asteroids_by_name = asteroids.values('name').distinct().count()
-
-    # 2. Média da velocidade dos asteroides
     avg_velocity = asteroids.aggregate(Avg('relative_velocity_km_per_second'))['relative_velocity_km_per_second__avg']
-
-    # 3. Maior velocidade de asteroide e nome dele
     max_velocity_obj = asteroids.order_by('-relative_velocity_km_per_second').first()
     max_velocity_data = {
         'velocity_km_s': max_velocity_obj.relative_velocity_km_per_second,
         'name': max_velocity_obj.name
     } if max_velocity_obj else None
-
-    # 4. Menor velocidade de asteroide e nome dele
     min_velocity_obj = asteroids.order_by('relative_velocity_km_per_second').first()
     min_velocity_data = {
         'velocity_km_s': min_velocity_obj.relative_velocity_km_per_second,
         'name': min_velocity_obj.name
     } if min_velocity_obj else None
-
-    # 5. Média do diâmetro dos asteroides (usando a média entre min e max)
     avg_min_diameter = asteroids.aggregate(Avg('estimated_diameter_min_meters'))['estimated_diameter_min_meters__avg']
     avg_max_diameter = asteroids.aggregate(Avg('estimated_diameter_max_meters'))['estimated_diameter_max_meters__avg']
     avg_diameter = (avg_min_diameter + avg_max_diameter) / 2 if avg_min_diameter is not None and avg_max_diameter is not None else None
-
-    # 6. Maior diâmetro e nome do asteroide com maior diâmetro
     max_estimated_diameter_obj = asteroids.order_by('-estimated_diameter_max_meters').first()
     max_diameter_data = {
         'diameter_meters': max_estimated_diameter_obj.estimated_diameter_max_meters,
         'name': max_estimated_diameter_obj.name
     } if max_estimated_diameter_obj else None
-
-    # 7. Menor diâmetro e nome do asteroide com menor diâmetro
     min_estimated_diameter_obj = asteroids.order_by('estimated_diameter_min_meters').first()
     min_diameter_data = {
         'diameter_meters': min_estimated_diameter_obj.estimated_diameter_min_meters,
         'name': min_estimated_diameter_obj.name
     } if min_estimated_diameter_obj else None
-
-    # 8. Quantidade de asteroides por dia registrado na base
     asteroids_by_date = asteroids.values('imported_date').annotate(count=Count('id')).order_by('imported_date')
     
-    # Formatar para um dicionário legível
     asteroids_by_date_formatted = {
         item['imported_date'].strftime('%Y-%m-%d'): item['count']
         for item in asteroids_by_date
     }
 
-    # 9. Média de quantidade de asteroides por dia
     num_unique_dates = asteroids.values('imported_date').distinct().count()
     avg_asteroids_per_day = total_asteroids / num_unique_dates if num_unique_dates > 0 else 0
-
-    # 10. Quantidade de asteroides únicos (pelo nome) que são potencialmente perigosos
     unique_potentially_hazardous_asteroids = asteroids.filter(is_potentially_hazardous_asteroid=True).values('name').distinct().count()
 
     response_data = {
@@ -231,7 +281,6 @@ def getIndicators(request):
 
 User = get_user_model()
 
-# ENDPOINT DE CADASTRO DE USUÁRIO
 class UserRegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegisterSerializer

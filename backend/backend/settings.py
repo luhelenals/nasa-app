@@ -2,32 +2,22 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 import os
-from django.core.exceptions import ImproperlyConfigured # Importe essa exceção
+from django.core.exceptions import ImproperlyConfigured
 
-# Define BASE_DIR corretamente para apontar para a raiz do projeto (NASA-APP)
-# __file__ é settings.py (backend/backend/settings.py)
-# .parent é o segundo 'backend' (backend/backend/)
-# .parent.parent é o primeiro 'backend' (backend/)
-# .parent.parent.parent é a raiz do projeto (NASA-APP/)
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent # Corrigido para apontar para NASA-APP/
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 # Carrega as variáveis de ambiente do arquivo .env na raiz do projeto
-load_dotenv(ROOT_DIR / '.env') # Usa ROOT_DIR para encontrar o .env
+load_dotenv(ROOT_DIR / '.env')
 
-# O BASE_DIR original do Django (para arquivos internos do projeto Django)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Agora, acesse as variáveis de ambiente
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-# Adicione esta verificação para garantir que SECRET_KEY não seja vazia
 if not SECRET_KEY:
     raise ImproperlyConfigured("The SECRET_KEY setting must not be empty. Check your .env file or environment variables in docker-compose.")
 
 DEBUG = bool(os.environ.get("DEBUG", default=0))
 
-# Certifique-se de que DJANGO_ALLOWED_HOSTS esteja configurado no .env
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS","127.0.0.1").split(",")
 
 DATABASES = {
@@ -61,6 +51,8 @@ INSTALLED_APPS = [
     'health_check.cache',
 
     'rest_framework_simplejwt',
+
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -113,7 +105,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -124,7 +115,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -143,6 +133,21 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated', # Exigir autenticação por padrão
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API de Asteroides',
+    'DESCRIPTION': 'Documentação para a API de asteroides da NASA',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+   
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'displayRequestDuration': True,
+        'filter': True,
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
 }
 
 SIMPLE_JWT = {
@@ -153,7 +158,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': False,
 
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY, # Já está correto, pois SECRET_KEY já foi carregada
+    'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
