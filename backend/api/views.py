@@ -75,7 +75,6 @@ def importData(request):
                 relative_velocity_km_per_second = float(velocity_str)
 
         # Validar se todos os campos obrigatórios foram encontrados
-        # Removemos close_approach_date da validação aqui, pois não o pegamos mais da API
         if all([name, estimated_diameter_min_meters is not None, estimated_diameter_max_meters is not None,
                 relative_velocity_km_per_second is not None, absolute_magnitude_h is not None,
                 is_potentially_hazardous_asteroid is not None, is_sentry_object is not None]):

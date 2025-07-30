@@ -16,33 +16,73 @@ function Dashboard({ accessToken, setCurrentPage, clearFormStates }) {
   const [indicadoresData, setIndicadoresData] = useState(null);
   const [dashboardMessage, setDashboardMessage] = useState('Carregando dados...');
   const [loadingData, setLoadingData] = useState(true);
+  const [showDatePopup, setShowDatePopup] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
 
-  useEffect(() => {
-    const fetchIndicadores = async () => {
-      if (!accessToken) {
-        setDashboardMessage('Erro: Token de acesso não disponível.');
-        setLoadingData(false);
-        return;
-      }
+  // Função para abrir o popup
+  const handleAddDateClick = () => {
+    setShowDatePopup(true);
+  };
 
-      try {
-        const response = await axios.get('http://localhost:8000/indicadores/', {
+  // Função para fechar o popup
+  const handleClosePopup = () => {
+    setShowDatePopup(false);
+    setSelectedDate("");
+  };
+
+  // Função para enviar a data
+  const handleConfirmDate = async () => {
+    if (!selectedDate) return alert("Por favor, selecione uma data.");
+
+    try {
+      await axios.post("http://localhost:8000/importar/", 
+        {import_date: selectedDate},
+        {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
-        });
-        setIndicadoresData(response.data);
-        setDashboardMessage('Dados carregados com sucesso!');
-      } catch (error) {
-        console.error("Erro ao buscar indicadores:", error);
-        setDashboardMessage('Erro ao carregar os indicadores. Verifique sua conexão ou token.');
-      } finally {
-        setLoadingData(false);
-      }
-    };
+        },    
+    );
 
+      alert("Data enviada com sucesso!");
+      handleClosePopup();
+
+      // Recarrega os dados depois do POST
+      setLoadingData(true);
+      await fetchIndicadores();
+    } catch (error) {
+      console.error("Erro ao enviar a data:", error);
+      alert("Erro ao enviar a data.");
+    }
+  };
+
+  const fetchIndicadores = async () => {
+    if (!accessToken) {
+      setDashboardMessage('Erro: Token de acesso não disponível.');
+      setLoadingData(false);
+      return;
+    }
+
+    try {
+      const response = await axios.get('http://localhost:8000/indicadores/', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      setIndicadoresData(response.data);
+      setDashboardMessage('Dados carregados com sucesso!');
+    } catch (error) {
+      console.error("Erro ao buscar indicadores:", error);
+      setDashboardMessage('Erro ao carregar os indicadores. Verifique sua conexão ou token.');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  useEffect(() => {
     fetchIndicadores();
-  }, [accessToken]); // Refaz a requisição se o accessToken mudar
+  }, [accessToken]);
+
 
   const handleLogout = () => {
     setCurrentPage('login'); // Volta para a página de login
@@ -135,10 +175,35 @@ function Dashboard({ accessToken, setCurrentPage, clearFormStates }) {
           </>
         )}
       </div>
+      
+      <div className="dashboard-button-container">
+        <button onClick={handleLogout} className="dashboard-button-logout">
+          Sair
+        </button>
+        <button onClick={handleAddDateClick} className="dashboard-button-update">
+          Adicionar Data
+        </button>
+      </div>
 
-      <button onClick={handleLogout} className="dashboard-button-logout"> {/* Nova classe para o botão de logout */}
-        Sair
-      </button>
+      {/* Popup de seleção de data */}
+      {showDatePopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <h3>Selecionar Data</h3>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+            <div className="popup-buttons">
+              <button onClick={handleConfirmDate}>Confirmar</button>
+              <button onClick={handleClosePopup}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+        
     </div>
   );
 }
