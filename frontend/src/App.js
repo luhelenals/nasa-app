@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import './App.css'; // Importa o arquivo CSS externo
+import './App.css';
 
 function App() {
   // States para os campos de input do formulário
@@ -22,7 +22,7 @@ function App() {
 
     try {
       // Fazendo a requisição POST para o endpoint de login
-      const response = await axios.post('http://localhost:8000/token', {
+      const response = await axios.post('http://localhost:8000/token/', {
         username: username,
         password: password
       });
@@ -31,8 +31,6 @@ function App() {
       setTokens(response.data);
       setMessage('Login bem-sucedido!');
       console.log('Tokens recebidos:', response.data);
-      // Em um app real, você salvaria esses tokens (ex: em localStorage ou Context API)
-      // e redirecionaria o usuário para a página principal.
 
     } catch (error) {
       console.error("Erro no login:", error);
@@ -48,7 +46,6 @@ function App() {
   };
 
   return (
-    // A tag <style> foi removida daqui
     <>
       <div className="login-container">
         <h1 className="login-title">Entrar</h1>
