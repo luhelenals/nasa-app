@@ -118,3 +118,9 @@ Todos os endpoints, exceto o de registro de usuário, exigem autenticação via 
 | `POST` | `/token/` | Obtém um par de tokens de acesso e refresh JWT para autenticação. |
 | `POST` | `/token/refresh/` | Renova o token de acesso usando um token de refresh válido. |
 | `POST` | `/token/verify/` | Verifica a validade de um token. |
+
+---
+
+## TO-DOs
+- Deploy da aplicação
+- Implementação de testes unitários no backend
