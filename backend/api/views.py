@@ -14,29 +14,39 @@ from django.shortcuts import get_object_or_404
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getData(request):
+    # Obtém todos os asteroides
     items = Asteroid.objects.all()
+
+    imported_date_str = request.GET.get('imported_date')
+    if imported_date_str:
+        try:
+            filter_date = date.fromisoformat(imported_date_str)
+            # Filtra os asteroides pela data de importação
+            items = items.filter(imported_date=filter_date)
+        except ValueError:
+            return Response(
+                {"error": "Formato de data inválido para o filtro. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"error": "Erro interno do servidor ao aplicar filtro de data."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     serializer = AsteroidSerializer(items, many=True)
     return Response(serializer.data)
-
-# views.py
-import logging
-
-logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getAsteroidInfo(request, id):
-    logger.info(f"Requisição para getAsteroidInfo com id: {id}")
     try:
-        asteroid = Asteroid.objects.get(id=id) # Use .get() para pegar 404 mais diretamente no try/except
-        logger.info(f"Asteroide encontrado: {asteroid.name} (ID: {asteroid.id})")
+        asteroid = Asteroid.objects.get(id=id)
         serializer = AsteroidSerializer(asteroid)
         return Response(serializer.data)
     except Asteroid.DoesNotExist:
-        logger.error(f"Asteroide com id={id} não encontrado no banco de dados.")
         return Response({"detail": "Não encontrado."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error(f"Erro inesperado ao buscar asteroide com id={id}: {e}")
         return Response({"detail": "Erro interno do servidor."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import './Asteroids.css';
+import React, { useState, useEffect, useCallback } from 'react'; // Adicionado useCallback
+import './Asteroids.css'; // Importa o arquivo CSS
 
+// Componente principal da aplicação de asteroides
 const Asteroids = ({ accessToken, setCurrentPage, clearFormStates }) => {
   const [asteroids, setAsteroids] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -9,9 +10,10 @@ const Asteroids = ({ accessToken, setCurrentPage, clearFormStates }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState(null);
+  const [filterDate, setFilterDate] = useState('');
 
   const handleGoBack = () => {
-    setCurrentPage('dashboard'); // Volta para a página de dashboard
+    setCurrentPage('dashboard'); // Volta para ashboard
   };
 
   const handleLogout = () => {
@@ -20,28 +22,43 @@ const Asteroids = ({ accessToken, setCurrentPage, clearFormStates }) => {
   };
 
   // Função para buscar a lista de asteroides
-  useEffect(() => {
-    const fetchAsteroids = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/', {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        });
-        if (!response.ok) {
-          throw new Error(`Erro HTTP: ${response.status}`);
-        }
-        const data = await response.json();
-        setAsteroids(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchAsteroids = useCallback(async () => {
+    if (!accessToken) {
+      setError("Token de acesso não fornecido. Por favor, faça login novamente.");
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
+    setError(null);
+
+    try {
+      let url = 'http://localhost:8000/';
+
+      if (filterDate) {
+        url = `http://localhost:8000/?imported_date=${filterDate}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
+      }
+      const data = await response.json();
+      setAsteroids(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken, filterDate]);
+
+  useEffect(() => {
     fetchAsteroids();
-  }, []); // garante que rode apenas uma vez ao montar o componente
+  }, [fetchAsteroids]); 
 
   // Função para buscar os detalhes de um asteroide específico
   const fetchAsteroidDetails = async (id) => {
@@ -72,6 +89,11 @@ const Asteroids = ({ accessToken, setCurrentPage, clearFormStates }) => {
     setSelectedAsteroid(null);
   };
 
+  // Função para limpar o filtro de data
+  const handleClearFilter = () => {
+    setFilterDate(''); // Limpa a data do filtro
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -93,6 +115,21 @@ const Asteroids = ({ accessToken, setCurrentPage, clearFormStates }) => {
       <h1 className="main-title">
         Asteroides Cadastrados
       </h1>
+
+      {/* Controles de filtro */}
+      <div className="filter-controls">
+        <label htmlFor="filterDate" className="filter-label">Filtrar por Data de Importação:</label>
+        <input
+          type="date"
+          id="filterDate"
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          className="date-input"
+        />
+        <button onClick={handleClearFilter} className="clear-filter-button">
+          Limpar Filtro
+        </button>
+      </div>
 
       <div className="asteroids-button-container">
         <button onClick={handleLogout} className="asteroids-button-logout">
@@ -123,7 +160,7 @@ const Asteroids = ({ accessToken, setCurrentPage, clearFormStates }) => {
               <button
                 className="details-button"
                 onClick={(e) => {
-                  e.stopPropagation(); // Evita que o clique no botão feche o modal
+                  e.stopPropagation();
                   fetchAsteroidDetails(asteroid.id);
                 }}
               >
@@ -132,7 +169,7 @@ const Asteroids = ({ accessToken, setCurrentPage, clearFormStates }) => {
             </div>
           ))
         ) : (
-          <p className="no-asteroids-message">Nenhum asteroide encontrado.</p>
+          <p className="no-asteroids-message">Nenhum asteroide encontrado para a data selecionada.</p>
         )}
       </div>
 
