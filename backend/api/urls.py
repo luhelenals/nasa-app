@@ -5,6 +5,7 @@ urlpatterns = [
     path('', views.getData),
     path('importar/', views.importData),
     path('indicadores/', views.getIndicators),
+    path('asteroide/<int:id>/', views.getAsteroidInfo), 
     
     path('register/', views.UserRegisterView.as_view(), name='user-register'),
 ]

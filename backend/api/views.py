@@ -9,6 +9,7 @@ from django.db.models import Avg, Max, Min, Count
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -16,6 +17,27 @@ def getData(request):
     items = Asteroid.objects.all()
     serializer = AsteroidSerializer(items, many=True)
     return Response(serializer.data)
+
+# views.py
+import logging
+
+logger = logging.getLogger(__name__)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def getAsteroidInfo(request, id):
+    logger.info(f"Requisição para getAsteroidInfo com id: {id}")
+    try:
+        asteroid = Asteroid.objects.get(id=id) # Use .get() para pegar 404 mais diretamente no try/except
+        logger.info(f"Asteroide encontrado: {asteroid.name} (ID: {asteroid.id})")
+        serializer = AsteroidSerializer(asteroid)
+        return Response(serializer.data)
+    except Asteroid.DoesNotExist:
+        logger.error(f"Asteroide com id={id} não encontrado no banco de dados.")
+        return Response({"detail": "Não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Erro inesperado ao buscar asteroide com id={id}: {e}")
+        return Response({"detail": "Erro interno do servidor."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
