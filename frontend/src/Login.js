@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-function Login({ setMessage, setLoading, setTokens, setCurrentPage, message, loading, tokens, clearFormStates }) {
+function Login({ setMessage, setLoading, setTokens, setAccessToken, setCurrentPage, message, loading, tokens, clearFormStates }) {
   // State para os campos de input do formulário de Login
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -20,11 +20,16 @@ function Login({ setMessage, setLoading, setTokens, setCurrentPage, message, loa
       });
 
       // Se a requisição for bem-sucedida, armazena os tokens e exibe mensagem
-      setTokens(response.data);
-      setMessage('Login bem-sucedido!');
+      setTokens(response.data); // Guarda ambos os tokens
+      setAccessToken(response.data.access); // Guarda o access token separadamente
       console.log('Tokens recebidos:', response.data);
-      // Em um app real, você salvaria esses tokens (ex: em localStorage ou Context API)
-      // e redirecionaria o usuário para a página principal.
+
+      // Redireciona para a página principal (dashboard) após um pequeno atraso
+      setTimeout(() => {
+        setCurrentPage('dashboard');
+        setLoginUsername(''); // Limpa campos após login bem-sucedido
+        setLoginPassword('');
+      }, 1000);
 
     } catch (error) {
       console.error("Erro no login:", error);
@@ -99,18 +104,6 @@ function Login({ setMessage, setLoading, setTokens, setCurrentPage, message, loa
           )}
         </button>
       </form>
-
-      {tokens && (
-        <div className="tokens-display">
-          <h2>Tokens Recebidos:</h2>
-          <p>
-            <span>Refresh Token:</span> {tokens.refresh}
-          </p>
-          <p>
-            <span>Access Token:</span> {tokens.access}
-          </p>
-        </div>
-      )}
 
       <p className="signup-text">
         Não tem uma conta?{' '}
